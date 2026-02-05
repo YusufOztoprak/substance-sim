@@ -1,9 +1,5 @@
 # Substance Sim: Advanced Pharmacokinetic Simulation Engine 🧪
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
-![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen?style=flat-square)
-
 **Substance Sim** is a scientific research platform designed to model the pharmacokinetics (PK) and pharmacodynamics (PD) of psychoactive and medical substances. Unlike simple calculators, it uses differential equations to simulate absorption, distribution, metabolism, and excretion (ADME) processes.
 
 ## 🚀 Key Features
