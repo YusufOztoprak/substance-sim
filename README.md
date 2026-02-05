@@ -74,8 +74,6 @@ $$ Tolerance(t) = 1 - e^{-\alpha \cdot \int C(t) dt} $$
 
 *Calculates how the body adapts to the substance over time.*
 
-For full details, visit the **[Science Page](http://localhost:3000/science.html)** in the app.
-
 ## 📡 API Endpoints
 
 | Method | Endpoint | Description |
