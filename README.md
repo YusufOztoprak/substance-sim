@@ -60,17 +60,17 @@
 This engine goes beyond simple half-life calculations. It implements:
 
 ### 1. The Bateman Function (Concentration)
-![Bateman Function](https://latex.codecogs.com/png.latex?\dpi{120}%20C(t)%20=%20\frac{D%20\cdot%20k_a}{V_d%20(k_a%20-%20k_e)}%20\left(%20e^{-k_e%20t}%20-%20e^{-k_a%20t}%20\right))
+$$ C(t) = \frac{D \cdot k_a}{V_d (k_a - k_e)} \left( e^{-k_e t} - e^{-k_a t} \right) $$
 
 *Simulates the rise (absorption) and fall (elimination) of substance levels.*
 
 ### 2. The Hill Equation (Effect)
-![Hill Equation](https://latex.codecogs.com/png.latex?\dpi{120}%20E%20=%20\frac{E_{max}%20\cdot%20C^n}{EC_{50}^n%20+%20C^n})
+$$ E = \frac{E_{max} \cdot C^n}{EC_{50}^n + C^n} $$
 
 *Models the sigmoidal dose-response curve.*
 
 ### 3. Tolerance (Neuroadaptation)
-![Tolerance Model](https://latex.codecogs.com/png.latex?\dpi{120}%20Tolerance(t)%20=%201%20-%20e^{-\alpha%20\cdot%20\int%20C(t)%20dt})
+$$ Tolerance(t) = 1 - e^{-\alpha \cdot \int C(t) dt} $$
 
 *Calculates how the body adapts to the substance over time.*
 
