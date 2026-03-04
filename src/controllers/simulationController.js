@@ -36,13 +36,14 @@ exports.runSimulation = async (req, res) => {
         }
 
         // Map Database Fields to Engine Parameters
+        // CRITICAL FIX: Provide default values for optional fields to prevent NaN errors
         const engineParams = {
             substance: {
-                Vd: substance.distributionVolume, // L/kg
-                ka: substance.absorptionRate,
+                Vd: substance.distributionVolume || 0.8, // Default to 0.8 L/kg if missing
+                ka: substance.absorptionRate || 1.5,     // Default to 1.5 /h if missing
                 ke: ke,
-                ec50: substance.ec50,
-                Emax: substance.emax
+                ec50: substance.ec50 || 0.5,
+                Emax: substance.emax || 100
             },
             dose: Number(dose), // Base dose for reference
             doses: doseArray,   // Full schedule

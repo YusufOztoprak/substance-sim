@@ -16,11 +16,11 @@ const SubstanceSchema = new mongoose.Schema({
     required: true
   },
   bioavailability: {
-    type: Number, // 0-1 (F) - Kana karışma oranı
+    type: Number, // 0-1 (F) - Fraction of dose that reaches systemic circulation
     default: 1.0
   },
   absorptionRate: {
-    type: Number, // (ka) - Emilim hızı sabiti
+    type: Number, // (ka) - Absorption rate constant
     default: 1.5
   },
   distributionVolume: {
@@ -30,12 +30,12 @@ const SubstanceSchema = new mongoose.Schema({
   
   // Pharmacodynamics (PD) Parameters (Hill Equation)
   ec50: {
-    type: Number, // mg/L - Yarı maksimum etki konsantrasyonu
+    type: Number, // mg/L - Concentration for half-maximal effect
     default: 0.5
   },
   emax: {
-    type: Number, // 0-100 - Maksimum etki skoru
-    default: 100
+    type: Number, // 0-100 - Maximum effect score
+    // default: 100
   },
 
   // Neurochemical Profile (Effect Vector)
@@ -49,7 +49,7 @@ const SubstanceSchema = new mongoose.Schema({
 
   // Risk & Toxicity
   toxicityThreshold: {
-    type: Number, // mg/L - Zehirlenme başlangıcı
+    type: Number, // mg/L - Onset of toxicity
     required: true
   },
   lethalDose: {
@@ -57,11 +57,11 @@ const SubstanceSchema = new mongoose.Schema({
     required: true
   },
   toleranceFactor: {
-    type: Number, // 0-1 - Vücudun alışma hızı
+    type: Number, // 0-1 - Rate of tolerance buildup
     default: 0.1
   },
   withdrawalFactor: {
-    type: Number, // 0-1 - Yoksunluk şiddeti
+    type: Number, // 0-1 - Severity of withdrawal
     default: 0.2
   },
 

@@ -5,7 +5,7 @@ const SimulationSchema = new mongoose.Schema({
     weight: Number,
     age: Number,
     gender: String,
-    metabolismRate: { type: Number, default: 1.0 } // Genetik faktör
+    metabolismRate: { type: Number, default: 1.0 } // Genetic factor
   },
   substance: {
     name: String,
