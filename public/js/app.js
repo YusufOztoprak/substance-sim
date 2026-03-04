@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const substanceSelect = document.getElementById('substance');
     const form = document.getElementById('simulationForm');
     const ctx = document.getElementById('resultsChart').getContext('2d');
+    const submitBtn = form.querySelector('button[type="submit"]');
     let chart;
 
     // 1. Load Substances
@@ -17,11 +18,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     } catch (err) {
         console.error('Error loading substances:', err);
+        alert('Failed to load substances. Please refresh the page.');
     }
 
     // 2. Handle Simulation
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        // Show loading state
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.textContent = 'Simulating...';
+        submitBtn.disabled = true;
 
         const payload = {
             substanceId: substanceSelect.value,
@@ -44,9 +51,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success) {
                 renderChart(data.simulation.timeline);
                 renderStats(data.simulation.stats);
+            } else {
+                alert('Simulation failed: ' + (data.message || 'Unknown error'));
             }
         } catch (err) {
             console.error('Simulation error:', err);
+            alert('An error occurred during simulation.');
+        } finally {
+            // Reset button state
+            submitBtn.textContent = originalBtnText;
+            submitBtn.disabled = false;
         }
     });
 

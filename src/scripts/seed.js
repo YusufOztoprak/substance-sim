@@ -1,84 +1,107 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const Substance = require('../models/Substance');
-
-dotenv.config();
+const connectDB = require('../config/db');
 
 const substances = [
-    {
-        name: 'Caffeine',
-        type: 'Stimulant',
-        halfLife: 5, // hours
-        bioavailability: 0.99,
-        distributionVolume: 0.7, // L/kg
-        absorptionRate: 2.5, // ka
-        ec50: 10, // mg/L
-        emax: 100,
-        toxicityThreshold: 50, // mg/L (Jitteriness, anxiety starts)
-        lethalDose: 150, // mg/kg (Estimated LD50)
-        description: 'Central nervous system stimulant. Blocks adenosine receptors.',
-        neurotransmitters: { dopamine: 20, serotonin: 5, gaba: -10, norepinephrine: 15, glutamate: 10 }
+  {
+    name: "Caffeine",
+    type: "stimulant",
+    halfLife: 5, // 5 hours
+    bioavailability: 0.99,
+    absorptionRate: 1.5, // Fast absorption
+    distributionVolume: 0.6, // L/kg
+    ec50: 10, // mg/L
+    emax: 80,
+    neurotransmitters: {
+      dopamine: 20,
+      norepinephrine: 40,
+      serotonin: 5,
+      gaba: 0,
+      glutamate: 10
     },
-    {
-        name: 'Alcohol',
-        type: 'Depressant',
-        halfLife: 1, 
-        bioavailability: 0.8,
-        distributionVolume: 0.6, // L/kg
-        absorptionRate: 3.0, 
-        ec50: 500, // mg/L
-        emax: 100,
-        toxicityThreshold: 2000, // mg/L (2.0 promil - severe intoxication)
-        lethalDose: 5000, // mg/kg (approx LD50)
-        description: 'Depressant. Enhances GABA effects, impairs coordination.',
-        neurotransmitters: { dopamine: 40, serotonin: 10, gaba: 80, norepinephrine: -20, glutamate: -30 }
+    toxicityThreshold: 50, // mg/L
+    lethalDose: 150, // mg/kg
+    description: "A central nervous system stimulant of the methylxanthine class."
+  },
+  {
+    name: "Alcohol (Ethanol)",
+    type: "depressant",
+    halfLife: 1, // Approx zero-order but modeled as 1h for simplicity
+    bioavailability: 0.8,
+    absorptionRate: 2.0, // Very fast
+    distributionVolume: 0.6, // L/kg (varies by gender)
+    ec50: 500, // mg/L (0.05% BAC approx)
+    emax: 100,
+    neurotransmitters: {
+      dopamine: 30,
+      norepinephrine: 0,
+      serotonin: 10,
+      gaba: 60, // Major effect
+      glutamate: -40 // Inhibits
     },
-    {
-        name: 'Nicotine',
-        type: 'Stimulant',
-        halfLife: 2,
-        bioavailability: 0.3, 
-        distributionVolume: 2.6, // L/kg
-        absorptionRate: 5.0, 
-        ec50: 0.05, 
-        emax: 100,
-        toxicityThreshold: 0.1, // mg/L (Nausea starts)
-        lethalDose: 6.5, // mg/kg (High toxicity)
-        description: 'Stimulant. Agonist at nicotinic acetylcholine receptors.',
-        neurotransmitters: { dopamine: 50, serotonin: 15, gaba: 0, norepinephrine: 30, glutamate: 10 }
+    toxicityThreshold: 3000, // 0.30% BAC
+    lethalDose: 5000, // 0.50% BAC approx
+    description: "A psychoactive substance that is the active ingredient in drinks such as beer, wine, and distilled spirits."
+  },
+  {
+    name: "Amphetamine (Adderall)",
+    type: "stimulant",
+    halfLife: 10, // 10-12 hours
+    bioavailability: 0.75,
+    absorptionRate: 1.0,
+    distributionVolume: 3.5, // High Vd
+    ec50: 0.05, // mg/L
+    emax: 95,
+    neurotransmitters: {
+      dopamine: 80, // Strong release
+      norepinephrine: 70,
+      serotonin: 10,
+      gaba: 0,
+      glutamate: 20
     },
-    {
-        name: 'Paracetamol',
-        type: 'Analgesic',
-        halfLife: 2.5,
-        bioavailability: 0.85,
-        distributionVolume: 0.9, // L/kg
-        absorptionRate: 1.5, 
-        ec50: 15, 
-        emax: 80, 
-        toxicityThreshold: 150, // mg/L (Liver toxicity risk starts)
-        lethalDose: 200, // mg/kg (Severe hepatotoxicity)
-        description: 'Pain reliever. High doses cause liver toxicity (Hepatotoxicity).',
-        neurotransmitters: { dopamine: 0, serotonin: 5, gaba: 0, norepinephrine: 0, glutamate: 0 }
-    }
+    toxicityThreshold: 0.5, // mg/L
+    lethalDose: 20, // mg/kg
+    description: "A central nervous system stimulant that is used in the treatment of attention deficit hyperactivity disorder (ADHD)."
+  },
+  {
+    name: "Nicotine",
+    type: "stimulant",
+    halfLife: 2, // 2 hours
+    bioavailability: 0.3, // Oral is low, but smoking is high. Assuming oral/gum for sim.
+    absorptionRate: 3.0, // Very fast if smoked/vaped
+    distributionVolume: 2.6,
+    ec50: 0.02,
+    emax: 60,
+    neurotransmitters: {
+      dopamine: 40,
+      norepinephrine: 30,
+      serotonin: 10,
+      gaba: 0,
+      glutamate: 10
+    },
+    toxicityThreshold: 0.1,
+    lethalDose: 6.5, // mg/kg
+    description: "A stimulant and potent parasympathomimetic alkaloid that is naturally produced in the nightshade family of plants."
+  }
 ];
 
 const seedDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/substance_sim');
-        console.log('Connected to MongoDB...');
-
-        await Substance.deleteMany({});
-        console.log('Cleared existing substances...');
-
-        await Substance.insertMany(substances);
-        console.log('Substances seeded successfully!');
-
-        process.exit();
-    } catch (err) {
-        console.error(err);
-        process.exit(1);
-    }
+  try {
+    await connectDB();
+    console.log("Connected to DB...");
+    
+    await Substance.deleteMany({});
+    console.log("Cleared existing substances...");
+    
+    await Substance.insertMany(substances);
+    console.log("Database seeded successfully!");
+    
+    process.exit();
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
 };
 
 seedDB();

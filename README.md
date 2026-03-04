@@ -13,8 +13,9 @@
 ## 🛠️ Tech Stack
 
 - **Backend:** Node.js, Express.js (REST API)
-- **Database:** MongoDB (Scientific Data Storage)
+- **Database:** MongoDB Atlas (Cloud Database)
 - **Frontend:** HTML5, Bootstrap 5, Chart.js (Dual-Axis Visualization)
+- **Security:** Helmet, Rate Limiting
 - **Math:** Custom implementation of PK/PD differential equations
 
 ## 📦 Installation & Setup
@@ -34,7 +35,7 @@
     Create a `.env` file (or use the provided `.env.example`):
     ```env
     PORT=3000
-    MONGO_URI=mongodb://localhost:27017/substance_sim
+    MONGO_URI=your_mongodb_atlas_connection_string
     ```
 
 4.  **Seed the Database (Crucial Step):**
