@@ -2,12 +2,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const substanceSelect = document.getElementById('substance');
     const form = document.getElementById('simulationForm');
     const ctx = document.getElementById('resultsChart').getContext('2d');
-    const submitBtn = form.querySelector('button[type="submit"]');
-    let chart;
+    const submitBtn = document.getElementById('simulateBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+    
+    let chartInstance = null;
 
     // 1. Load Substances
     try {
         const res = await fetch('/api/substances');
+        if (!res.ok) throw new Error('Failed to fetch substances');
+        
         const substances = await res.json();
         
         substances.forEach(sub => {
@@ -18,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     } catch (err) {
         console.error('Error loading substances:', err);
-        alert('Failed to load substances. Please refresh the page.');
+        alert('Could not load substance list. Please check your connection and refresh.');
     }
 
     // 2. Handle Simulation
@@ -26,17 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
 
         // Show loading state
-        const originalBtnText = submitBtn.textContent;
-        submitBtn.textContent = 'Simulating...';
-        submitBtn.disabled = true;
+        setLoading(true);
 
         const payload = {
             substanceId: substanceSelect.value,
             dose: parseFloat(document.getElementById('dose').value),
             weight: parseFloat(document.getElementById('weight').value),
             age: parseFloat(document.getElementById('age').value),
-            doses: parseInt(document.getElementById('doses').value),
-            interval: parseFloat(document.getElementById('interval').value)
+            doseCount: parseInt(document.getElementById('doses').value) || 1,
+            doseInterval: parseFloat(document.getElementById('interval').value) || 0
         };
 
         try {
@@ -50,72 +53,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (data.success) {
                 renderChart(data.simulation.timeline);
-                renderStats(data.simulation.stats);
+                // renderStats(data.simulation.stats); // Stats feature is currently placeholder
             } else {
                 alert('Simulation failed: ' + (data.message || 'Unknown error'));
             }
         } catch (err) {
             console.error('Simulation error:', err);
-            alert('An error occurred during simulation.');
+            alert('An error occurred during simulation. Please try again.');
         } finally {
             // Reset button state
-            submitBtn.textContent = originalBtnText;
-            submitBtn.disabled = false;
+            setLoading(false);
         }
     });
 
-    function renderStats(stats) {
-        const statsDiv = document.getElementById('stats');
-        statsDiv.innerHTML = `
-            <div class="row text-center">
-                <div class="col-md-3">
-                    <div class="card bg-light mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title text-danger">${stats.riskScore}</h5>
-                            <p class="card-text">Risk Score (0-100)</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-light mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title text-primary">${stats.maxConcentration} mg/L</h5>
-                            <p class="card-text">Peak Concentration</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-light mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title text-success">${stats.metabolismEfficiency}</h5>
-                            <p class="card-text">Metabolism Efficiency</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card bg-light mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title text-warning">${stats.totalExposure}</h5>
-                            <p class="card-text">Total Exposure (AUC)</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+    function setLoading(isLoading) {
+        if (isLoading) {
+            submitBtn.disabled = true;
+            btnText.textContent = 'Simulating...';
+            btnSpinner.classList.remove('d-none');
+        } else {
+            submitBtn.disabled = false;
+            btnText.textContent = 'Run Simulation 🚀';
+            btnSpinner.classList.add('d-none');
+        }
     }
 
     function renderChart(timeline) {
-        const labels = timeline.map(t => t.time);
+        // Extract data arrays
+        const labels = timeline.map(t => t.time.toFixed(1)); // Format time to 1 decimal
         const concentration = timeline.map(t => t.concentration);
         const effect = timeline.map(t => t.effect);
-        const tolerance = timeline.map(t => t.tolerance);
+        const tolerance = timeline.map(t => t.tolerance * 100); // Convert to percentage
 
         // Destroy existing chart to prevent overlap
-        if (chart) {
-            chart.destroy();
+        if (chartInstance) {
+            chartInstance.destroy();
         }
 
-        chart = new Chart(ctx, {
+        chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
@@ -123,26 +98,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     {
                         label: 'Blood Concentration (mg/L)',
                         data: concentration,
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(220, 53, 69, 1)', // Red
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
                         yAxisID: 'y',
-                        fill: true
+                        fill: true,
+                        tension: 0.4
                     },
                     {
                         label: 'Perceived Effect (0-100)',
                         data: effect,
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(13, 110, 253, 1)', // Blue
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
                         yAxisID: 'y1',
-                        fill: true
+                        fill: true,
+                        tension: 0.4
                     },
                     {
-                        label: 'Tolerance Build-up (%)',
+                        label: 'Tolerance Level (%)',
                         data: tolerance,
-                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderColor: 'rgba(25, 135, 84, 1)', // Green
                         borderDash: [5, 5],
                         yAxisID: 'y1',
-                        fill: false
+                        fill: false,
+                        tension: 0.4
                     }
                 ]
             },
@@ -152,12 +130,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     mode: 'index',
                     intersect: false,
                 },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Pharmacokinetic & Pharmacodynamic Timeline'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(2);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
                 scales: {
+                    x: {
+                        title: { display: true, text: 'Time (Hours)' }
+                    },
                     y: {
                         type: 'linear',
                         display: true,
                         position: 'left',
-                        title: { display: true, text: 'Concentration (mg/L)' }
+                        title: { display: true, text: 'Concentration (mg/L)' },
+                        beginAtZero: true
                     },
                     y1: {
                         type: 'linear',
