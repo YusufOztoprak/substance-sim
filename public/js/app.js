@@ -5,16 +5,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const submitBtn = document.getElementById('simulateBtn');
     const btnText = document.getElementById('btnText');
     const btnSpinner = document.getElementById('btnSpinner');
-    
+
     let chartInstance = null;
 
     // 1. Load Substances
     try {
         const res = await fetch('/api/substances');
         if (!res.ok) throw new Error('Failed to fetch substances');
-        
+
         const substances = await res.json();
-        
+
         substances.forEach(sub => {
             const option = document.createElement('option');
             option.value = sub._id;
@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             dose: parseFloat(document.getElementById('dose').value),
             weight: parseFloat(document.getElementById('weight').value),
             age: parseFloat(document.getElementById('age').value),
-            doseCount: parseInt(document.getElementById('doses').value) || 1,
-            doseInterval: parseFloat(document.getElementById('interval').value) || 0
+            doses: parseInt(document.getElementById('doses').value) || 1,
+            interval: parseFloat(document.getElementById('interval').value) || 0
         };
 
         try {
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             const data = await res.json();
-            
+
             if (data.success) {
                 renderChart(data.simulation.timeline);
                 // renderStats(data.simulation.stats); // Stats feature is currently placeholder
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (err) {
             console.error('Simulation error:', err);
-            alert('An error occurred during simulation. Please try again.');
+            alert('An error occurred during simulation. Please try again. \n' + err.message + '\n' + err.stack);
         } finally {
             // Reset button state
             setLoading(false);
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 let label = context.dataset.label || '';
                                 if (label) {
                                     label += ': ';
