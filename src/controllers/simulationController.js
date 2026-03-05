@@ -4,6 +4,9 @@ const { calculateTimeline } = require('../engine/pharmacokinetics');
 
 exports.runSimulation = async (req, res) => {
     try {
+        console.log('--- Starting Simulation ---');
+        console.log('Request Body:', req.body);
+
         // 1. Extract Inputs (Matching Frontend Payload)
         const { 
             substanceId, 
@@ -15,11 +18,27 @@ exports.runSimulation = async (req, res) => {
             duration = 24 
         } = req.body;
 
+        // Validate Inputs
+        if (!substanceId) {
+            return res.status(400).json({ error: 'Substance ID is required.' });
+        }
+        if (!weight || isNaN(weight) || weight <= 0) {
+            return res.status(400).json({ error: 'Valid weight is required.' });
+        }
+        if (!age || isNaN(age) || age <= 0) {
+            return res.status(400).json({ error: 'Valid age is required.' });
+        }
+        if (!dose || isNaN(dose) || dose <= 0) {
+            return res.status(400).json({ error: 'Valid dose is required.' });
+        }
+
         // 2. Fetch Substance Data
         const substance = await Substance.findById(substanceId);
         if (!substance) {
+            console.error(`Substance not found for ID: ${substanceId}`);
             return res.status(404).json({ error: 'Substance not found' });
         }
+        console.log('Substance Found:', substance.name);
 
         // 3. Prepare Scientific Parameters
         // Calculate Elimination Rate Constant (ke) from Half-Life
@@ -34,10 +53,13 @@ exports.runSimulation = async (req, res) => {
 
         // Generate Dose Schedule (Superposition Principle)
         const doseArray = [];
-        for (let i = 0; i < Number(doses); i++) {
+        const numDoses = Number(doses) || 1;
+        const doseInterval = Number(interval) || 0;
+        
+        for (let i = 0; i < numDoses; i++) {
             doseArray.push({
                 amount: Number(dose),
-                time: i * Number(interval)
+                time: i * doseInterval
             });
         }
 
@@ -57,9 +79,17 @@ exports.runSimulation = async (req, res) => {
             weight: Number(weight),
             age: Number(age)
         };
+        
+        console.log('Engine Parameters:', JSON.stringify(engineParams, null, 2));
 
         // 4. Run Scientific Simulation Engine
         const simulationResults = calculateTimeline(engineParams);
+        
+        // Check for NaN in results
+        if (isNaN(simulationResults.stats.maxConcentration)) {
+             console.error('Simulation returned NaN results:', simulationResults);
+             return res.status(500).json({ error: 'Simulation calculation failed (NaN result).' });
+        }
 
         // 5. Save to Database (MongoDB)
         const newSimulation = new Simulation({
@@ -79,6 +109,7 @@ exports.runSimulation = async (req, res) => {
         });
 
         await newSimulation.save();
+        console.log('Simulation Saved:', newSimulation._id);
 
         // 6. Return Results (Matching Frontend Expectation)
         res.json({
@@ -89,7 +120,7 @@ exports.runSimulation = async (req, res) => {
 
     } catch (error) {
         console.error('Simulation Error:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ error: 'Internal Server Error: ' + error.message });
     }
 };
 
