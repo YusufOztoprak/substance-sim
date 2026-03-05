@@ -19,6 +19,10 @@ const puppeteer = require('puppeteer');
         // Wait for substance load
         await new Promise(r => setTimeout(r, 1000));
 
+        // Check if Chart is defined
+        const hasChart = await page.evaluate(() => typeof window.Chart !== 'undefined');
+        console.log('BROWSER TEST: window.Chart is defined:', hasChart);
+
         // Select first substance
         await page.select('#substance', '69a80b57bb7daaf18ac8b90a');
 

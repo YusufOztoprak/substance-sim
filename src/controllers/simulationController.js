@@ -24,6 +24,12 @@ exports.runSimulation = async (req, res) => {
         // 3. Prepare Scientific Parameters
         // Calculate Elimination Rate Constant (ke) from Half-Life
         // ke = ln(2) / t1/2
+        // SAFETY CHECK: Ensure halfLife is valid to prevent division by zero
+        if (!substance.halfLife || substance.halfLife <= 0) {
+            console.error(`Invalid half-life for substance ${substance.name}: ${substance.halfLife}`);
+            return res.status(400).json({ error: 'Invalid substance data: Half-life must be greater than 0.' });
+        }
+
         const ke = 0.693 / substance.halfLife;
 
         // Generate Dose Schedule (Superposition Principle)
