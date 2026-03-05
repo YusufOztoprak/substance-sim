@@ -1,20 +1,28 @@
-const express = require("express");
+const express = require('express');
+const path = require('path');
+const connectDB = require('./config/db');
+const simulationRoutes = require('./routes/simulationRoutes');
+
+// Connect to Database
+connectDB();
+
 const app = express();
-const sequelize = require("./config/db");
-const Substance = require("./models/Substance");
-const Simulation = require("./models/Simulation");
 
-sequelize.sync().then(() => {
-    console.log("Database synced");
-});
-
-
+// Init Middleware
 app.use(express.json());
 
-const simulationRoutes = require("./routes/simulationRoutes");
-app.use("/api", simulationRoutes);
+// Define Routes
+app.use('/api', simulationRoutes);
 
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log("Simulation API running on port", PORT);
+// Serve static assets in production
+// Set static folder
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '..', 'public', 'index.html'));
 });
+
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));

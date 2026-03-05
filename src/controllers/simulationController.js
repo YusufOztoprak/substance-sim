@@ -4,131 +4,101 @@ const { calculateTimeline } = require('../engine/pharmacokinetics');
 
 exports.runSimulation = async (req, res) => {
     try {
-        console.log('--- Starting Simulation ---');
-        console.log('Request Body:', req.body);
+        console.log('Simulation Request Body:', req.body);
 
-        // 1. Extract Inputs (Matching Frontend Payload)
         const { 
             substanceId, 
             weight, 
             age, 
             dose, 
-            doses = 1,      // Frontend sends 'doses' (count)
-            interval = 0,   // Frontend sends 'interval' (hours)
-            duration = 24 
+            doses = 1, 
+            interval = 0 
         } = req.body;
 
-        // Validate Inputs
+        // 1. Input Validation
         if (!substanceId) {
-            return res.status(400).json({ error: 'Substance ID is required.' });
+            return res.status(400).json({ error: 'Substance ID is required' });
         }
         if (!weight || isNaN(weight) || weight <= 0) {
-            return res.status(400).json({ error: 'Valid weight is required.' });
-        }
-        if (!age || isNaN(age) || age <= 0) {
-            return res.status(400).json({ error: 'Valid age is required.' });
+            return res.status(400).json({ error: 'Valid weight is required' });
         }
         if (!dose || isNaN(dose) || dose <= 0) {
-            return res.status(400).json({ error: 'Valid dose is required.' });
+            return res.status(400).json({ error: 'Valid dose is required' });
         }
 
-        // 2. Fetch Substance Data
+        // 2. Fetch Substance
         const substance = await Substance.findById(substanceId);
         if (!substance) {
-            console.error(`Substance not found for ID: ${substanceId}`);
             return res.status(404).json({ error: 'Substance not found' });
         }
         console.log('Substance Found:', substance.name);
 
-        // 3. Prepare Scientific Parameters
-        // Calculate Elimination Rate Constant (ke) from Half-Life
-        // ke = ln(2) / t1/2
-        // SAFETY CHECK: Ensure halfLife is valid to prevent division by zero
+        // 3. Safety Check for Half-Life
         if (!substance.halfLife || substance.halfLife <= 0) {
             console.error(`Invalid half-life for substance ${substance.name}: ${substance.halfLife}`);
-            return res.status(400).json({ error: 'Invalid substance data: Half-life must be greater than 0.' });
+            return res.status(500).json({ error: 'Invalid substance data: Half-life must be greater than 0' });
         }
 
+        // 4. Prepare Engine Parameters
         const ke = 0.693 / substance.halfLife;
-
-        // Generate Dose Schedule (Superposition Principle)
-        const doseArray = [];
-        const numDoses = Number(doses) || 1;
-        const doseInterval = Number(interval) || 0;
         
-        for (let i = 0; i < numDoses; i++) {
-            doseArray.push({
-                amount: Number(dose),
-                time: i * doseInterval
-            });
-        }
-
-        // Map Database Fields to Engine Parameters
-        // CRITICAL FIX: Provide default values for optional fields to prevent NaN errors
+        // Ensure all parameters have valid defaults to prevent NaN
         const engineParams = {
             substance: {
-                Vd: substance.distributionVolume || 0.8, // Default to 0.8 L/kg if missing
-                ka: substance.absorptionRate || 1.5,     // Default to 1.5 /h if missing
+                Vd: substance.distributionVolume || 0.8, 
+                ka: substance.absorptionRate || 1.5,     
                 ke: ke,
                 ec50: substance.ec50 || 0.5,
                 Emax: substance.emax || 100
             },
-            dose: Number(dose), // Base dose for reference
-            doses: doseArray,   // Full schedule
-            duration: Number(duration),
+            dose: Number(dose),
+            doses: Number(doses),
+            interval: Number(interval),
+            duration: 24, // Simulate for 24 hours
             weight: Number(weight),
-            age: Number(age)
+            age: Number(age) || 25
         };
-        
-        console.log('Engine Parameters:', JSON.stringify(engineParams, null, 2));
 
-        // 4. Run Scientific Simulation Engine
+        console.log('Engine Params:', JSON.stringify(engineParams, null, 2));
+
+        // 5. Run Simulation Engine
         const simulationResults = calculateTimeline(engineParams);
-        
-        // Check for NaN in results
-        if (isNaN(simulationResults.stats.maxConcentration)) {
-             console.error('Simulation returned NaN results:', simulationResults);
-             return res.status(500).json({ error: 'Simulation calculation failed (NaN result).' });
+
+        // 6. Validate Results
+        if (!simulationResults || !simulationResults.stats) {
+            throw new Error('Simulation engine returned invalid results');
         }
 
-        // 5. Save to Database (MongoDB)
+        const maxConc = parseFloat(simulationResults.stats.maxConcentration);
+        if (isNaN(maxConc)) {
+            console.error('Simulation resulted in NaN:', simulationResults);
+            return res.status(500).json({ error: 'Simulation calculation failed (NaN result)' });
+        }
+
+        // 7. Save to Database
         const newSimulation = new Simulation({
-            userProfile: { weight, age },
+            userProfile: { weight: Number(weight), age: Number(age) },
             substance: {
                 name: substance.name,
                 dose: Number(dose),
                 frequency: Number(interval)
             },
             results: {
-                peakConcentration: parseFloat(simulationResults.stats.maxConcentration),
-                totalExposure: parseFloat(simulationResults.stats.totalExposure),
-                maxRiskScore: parseFloat(simulationResults.stats.riskScore),
-                riskBand: simulationResults.stats.riskScore > 50 ? 'High' : 'Low', // Simple logic for now
+                peakConcentration: maxConc,
+                totalExposure: parseFloat(simulationResults.stats.totalExposure) || 0,
+                maxRiskScore: parseFloat(simulationResults.stats.riskScore) || 0,
+                riskBand: (simulationResults.stats.riskScore > 50) ? 'High' : 'Low',
                 timeline: simulationResults.timeline
             }
         });
 
         await newSimulation.save();
-        console.log('Simulation Saved:', newSimulation._id);
+        console.log('Simulation saved successfully');
 
-        // 6. Return Results (Matching Frontend Expectation)
-        res.json({
-            success: true,
-            simulationId: newSimulation._id,
-            simulation: simulationResults // Frontend expects data.simulation.timeline
-        });
+        res.json(simulationResults);
 
     } catch (error) {
         console.error('Simulation Error:', error);
-        res.status(500).json({ error: 'Internal Server Error: ' + error.message });
-    }
-};
-
-exports.getSubstances = async (req, res) => {
-    try {
-        const substances = await Substance.find({}, 'name type description');
-        res.json(substances);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'An error occurred during simulation', details: error.message });
     }
 };
